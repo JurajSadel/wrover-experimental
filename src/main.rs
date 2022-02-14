@@ -22,7 +22,10 @@ use anyhow::bail;
 use anyhow::Result;
 use log::*;
 
+//use html_parser::Dom;
 
+//use select::document::Document;
+//use select::predicate::{Attr, Class, Name, Predicate};
 
 const SSID: &str = "test";//env!("RUST_ESP32_STD_DEMO_WIFI_SSID");
 const PASS: &str = "qwerqwer";//env!("RUST_ESP32_STD_DEMO_WIFI_PASS");
@@ -46,35 +49,45 @@ fn main() ->  Result<()> {
         sys_loop_stack.clone(),
         default_nvs.clone(),
     )?;
-/* 
-    let url = String::from("https://google.com");
 
-    info!("About to fetch content from {}", url);
-
+    let url = String::from("https://idos.idnes.cz/brno/odjezdy/vysledky/?f=Technologick%C3%BD%20park&fc=302003");
 
     let mut client = EspHttpClient::new_default()?;
 
     let response = client.get(&url)?.submit()?;
+    let body: Result<Vec<u8>, _> = Bytes::<_, 64>::new(response.reader()).collect();
+    for _ in 0..1000 {
+        info!("About to fetch content from {}", url);
 
-    let body: Result<Vec<u8>, _> = Bytes::<_, 64>::new(response.reader()).take(512).collect();
+        /*
+        let mut client = EspHttpClient::new_default()?;
 
-    let body = body?;
+        let response = client.get(&url)?.submit()?;
 
+        let body: Result<Vec<u8>, _> = Bytes::<_, 64>::new(response.reader()).collect();
 
-    info!(
-        "Body (truncated to 3K):\n{:?}",
-        String::from_utf8_lossy(&body).into_owned()
-    );
-
-    println!(
-        "Body (truncated to 3K):\n{:?}",
-        String::from_utf8_lossy(&body).into_owned()
-    );
+        let body = body?;
 */
+        //let body = body?;
+        info!(
+            "Body:\n{:?}",
+            String::from_utf8_lossy(&body).into_owned()
+        );
+        //let response = client.get(&url)?.submit()?;
+        body = response.reader().into_iter().collect()/* .into_iter().collect()*/;
+
+
+        //thread::sleep(Duration::from_millis(1000));
+        // println!(
+        //     "Body (truncated to 3K):\n{:?}",
+        //     String::from_utf8_lossy(&body).into_owned()
+        // );
+        }
     println!("Hello, world!");
+
     drop(wifi);
     info!("Wifi stopped");
-    thread::sleep(Duration::from_secs(20));
+
     Ok(())
 }
 
@@ -130,28 +143,9 @@ fn wifi(
     ) = status
     {
         info!("Wifi connected");
-
-        ping(&ip_settings)?;
     } else {
         bail!("Unexpected Wifi status: {:?}", status);
     }
 
     Ok(wifi)
-}
-
-fn ping(ip_settings: &ipv4::ClientSettings) -> Result<()> {
-    info!("About to do some pings for {:?}", ip_settings);
-
-    let ping_summary =
-        ping::EspPing::default().ping(ip_settings.subnet.gateway, &Default::default())?;
-    if ping_summary.transmitted != ping_summary.received {
-        bail!(
-            "Pinging gateway {} resulted in timeouts",
-            ip_settings.subnet.gateway
-        );
-    }
-
-    info!("Pinging done");
-
-    Ok(())
 }
