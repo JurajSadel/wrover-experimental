@@ -1,0 +1,28 @@
+[package]
+name = "brno-public-transport"
+version = "0.1.0"
+authors = ["Juraj Sadel <juraj.sadel@espressif.com>"]
+edition = "2018"
+resolver = "2"
+
+[profile.release]
+opt-level = "s"
+
+[profile.dev]
+debug = true # Symbols are nice and they don't increase the size on Flash
+opt-level = "z"
+
+[features]
+native = ["esp-idf-sys/native"]
+
+[dependencies]
+anyhow = {version = "1", features = ["backtrace"]}
+esp-idf-sys = { version = "0.30.5", features = ["binstart"] }
+esp-idf-svc = { version = "0.36.9", features = ["experimental"] }
+esp-idf-hal = "0.32.9"
+embedded-svc = "0.16"
+log = "0.4"
+
+[build-dependencies]
+embuild = "0.28"
+anyhow = "1"
