@@ -1,4 +1,3 @@
-#[warn(unused_imports)]
 use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 
 use embedded_svc::http::{self, client::*, status, Headers, Status};
@@ -52,14 +51,13 @@ fn main() ->  Result<()> {
 
     let url = String::from("https://idos.idnes.cz/brno/odjezdy/vysledky/?f=Technologick%C3%BD%20park&fc=302003");
 
-    let mut client = EspHttpClient::new_default()?;
+    //let mut client = EspHttpClient::new_default()?;
 
-    let response = client.get(&url)?.submit()?;
-    let body: Result<Vec<u8>, _> = Bytes::<_, 64>::new(response.reader()).collect();
+    //let response = client.get(&url)?.submit()?;
+    //let body: Result<Vec<u8>, _> = Bytes::<_, 64>::new(response.reader()).collect();
     for _ in 0..1000 {
         info!("About to fetch content from {}", url);
 
-        /*
         let mut client = EspHttpClient::new_default()?;
 
         let response = client.get(&url)?.submit()?;
@@ -67,15 +65,15 @@ fn main() ->  Result<()> {
         let body: Result<Vec<u8>, _> = Bytes::<_, 64>::new(response.reader()).collect();
 
         let body = body?;
-*/
-        //let body = body?;
+
+        /*let body = body?;
         info!(
             "Body:\n{:?}",
             String::from_utf8_lossy(&body).into_owned()
         );
         //let response = client.get(&url)?.submit()?;
         body = response.reader().into_iter().collect()/* .into_iter().collect()*/;
-
+*/
 
         //thread::sleep(Duration::from_millis(1000));
         // println!(
@@ -83,6 +81,7 @@ fn main() ->  Result<()> {
         //     String::from_utf8_lossy(&body).into_owned()
         // );
         }
+
     println!("Hello, world!");
 
     drop(wifi);

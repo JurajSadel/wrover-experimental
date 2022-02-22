@@ -15,6 +15,7 @@ opt-level = "z"
 [features]
 native = ["esp-idf-sys/native"]
 
+
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
 esp-idf-sys = { version = "=0.30.5", features = ["binstart"] }
@@ -23,10 +24,19 @@ esp-idf-hal = "=0.32.10"
 embedded-svc = "=0.16"
 log = "0.4"
 regex = "1"
+#scraper = "0.12.0"
 #kuchiki = "0.8.1"
-#html5ever = "0.25.1"
+html5ever = "0.25.1"
 #select = { git = "https://github.com/utkarshkukreti/select.rs", tag = "0.5.0"}
+
+parking_lot = { version = "=0.12.0", path = "../parking_lot" }
 
 [build-dependencies]
 embuild = "0.28"
 anyhow = "1"
+
+
+[patch.crates-io]
+#libc = { version = "0.2.119", git = "https://github.com/rust-lang/libc"}
+parking_lot_core = { version = "=0.9.1", path = "../parking_lot/core" } #version = "0.9.1"
+parking_lot = { version = "=0.12.0", path = "../parking_lot" }
