@@ -1,3 +1,4 @@
+use embedded_svc::http::status::OK;
 use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 
 use embedded_svc::http::{self, client::*, status, Headers, Status};
@@ -255,17 +256,28 @@ Element(Element { id: None, name: "tr", variant: Normal, attributes: {"data-ttin
     info!("Wifi stopped");
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
+    //let spi = peripherals.spi2;
 
     kaluga_hello_world(
-        pins.gpio6,
-        pins.gpio13,
-        pins.gpio16,
-        peripherals.spi3,
-        pins.gpio15,
-        pins.gpio9,
-        pins.gpio11,
+        pins.gpio5,
+        pins.gpio21,
+        pins.gpio18,
+        peripherals.spi2,
+        pins.gpio19,
+        pins.gpio25,
+        pins.gpio23,
+        pins.gpio22,
     )?;
 
+    /*
+    backlight: gpio::Gpio5<gpio::Unknown>, //6
+    dc: gpio::Gpio21<gpio::Unknown>, //13
+    rst: gpio::Gpio18<gpio::Unknown>, //16
+    spi: spi::SPI2, //3
+    sclk: gpio::Gpio19<gpio::Unknown>, //15
+    miso: gpio::Gpio25<gpio::Unknown>,
+    mosi: gpio::Gpio23<gpio::Unknown>,
+    cs: gpio::Gpio22<gpio::Unknown>, //11 */
     println!("Hello, world!");
 
 
@@ -316,6 +328,9 @@ fn wifi(
 
     info!("Wifi configuration set, about to get status");
 
+    wifi.wait_status_with_timeout(Duration::from_secs(20), |status| !status.is_transitional())
+        .map_err(|e| anyhow::anyhow!("Unexpected Wifi status: {:?}", e))?;
+
     let status = wifi.get_status();
 
     if let Status(
@@ -324,6 +339,8 @@ fn wifi(
     ) = status
     {
         info!("Wifi connected");
+
+        //ping(&ip_settings)?;
     } else {
         bail!("Unexpected Wifi status: {:?}", status);
     }
@@ -332,31 +349,45 @@ fn wifi(
 }
 
 fn kaluga_hello_world(
-    backlight: gpio::Gpio6<gpio::Unknown>,
-    dc: gpio::Gpio13<gpio::Unknown>,
-    rst: gpio::Gpio16<gpio::Unknown>,
-    spi: spi::SPI3,
-    sclk: gpio::Gpio15<gpio::Unknown>,
-    sdo: gpio::Gpio9<gpio::Unknown>,
-    cs: gpio::Gpio11<gpio::Unknown>,
+    backlight: gpio::Gpio5<gpio::Unknown>, //6
+    dc: gpio::Gpio21<gpio::Unknown>, //13
+    rst: gpio::Gpio18<gpio::Unknown>, //16
+    spi: spi::SPI2, //3
+    sclk: gpio::Gpio19<gpio::Unknown>, //15
+    miso: gpio::Gpio25<gpio::Unknown>,
+    mosi: gpio::Gpio23<gpio::Unknown>,
+    cs: gpio::Gpio22<gpio::Unknown>, //11
 ) -> anyhow::Result<()> {
     info!(
         "About to initialize the ILI9341 SPI LED driver",
     );
 
     let config = <spi::config::Config as Default>::default()
-        .baudrate((40_000_000).into());
+        .baudrate((26_000_000).into());
 
+    info!(
+        "Info 1",
+    );
     let mut backlight = backlight.into_output()?;
-    backlight.set_high()?;
+    
+    info!(
+        "Info 1.5",
+    );
 
+    backlight.set_low()?;
+
+    info!(
+        "Info 2",
+    );
+
+    //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/spi_master.html
     let di = SPIInterfaceNoCS::new(
-        spi::Master::<spi::SPI3, _, _, _, _>::new(
+        spi::Master::<spi::SPI2, _, _, _, _>::new(
             spi,
             spi::Pins {
                 sclk,
-                sdo,
-                sdi: Option::<gpio::Gpio21<gpio::Unknown>>::None,
+                sdo: miso,
+                sdi: Some(mosi),
                 cs: Some(cs),
             },
             config,
@@ -364,7 +395,39 @@ fn kaluga_hello_world(
         dc.into_output()?,
     );
 
+    // let peripherals = Peripherals::take().unwrap();
+    // let pins = peripherals.pins;
+
+    // let spi = peripherals.spi2;
+
+    // let sclk = peripherals.pins.gpio19;
+    // let miso = peripherals.pins.gpio25;
+    // let mosi = peripherals.pins.gpio23;
+    // let cs = peripherals.pins.gpio22;
+
+    // println!("Starting SPI loopback test");
+    // let config = <spi::config::Config as Default>::default().baudrate((26_000_000).into());
+    // let mut di = spi::Master::<spi::SPI2, _, _, _, _>::new(
+    //     spi,
+    //     spi::Pins {
+    //         sclk,
+    //         sdo: miso,
+    //         sdi: Some(mosi),
+    //         cs: Some(cs),
+    //     },
+    //     config,
+    //     )?,
+    //     dc.into_output()?,
+    // );
+    info!(
+        "Info 3",
+    );
+
     let reset = rst.into_output()?;
+
+    info!(
+        "Info 4",
+    );
 
     let mut display = ili9341::Ili9341::new(
         di,
@@ -372,9 +435,13 @@ fn kaluga_hello_world(
         &mut delay::Ets,
         Orientation::Landscape,
         ili9341::DisplaySize240x320,
-    )?;
+    ).map_err(|_| anyhow::anyhow!("Display"))?;
 
-    led_draw(&mut display)
+    info!(
+        "Info 5",
+    );
+
+    led_draw(&mut display).map_err(|_| anyhow::anyhow!("Display"))
 
 }
 
@@ -386,6 +453,10 @@ where
 {
     display.clear(Rgb565::BLACK.into())?;
 
+    info!(
+        "Info 6",
+    );
+
     Rectangle::new(display.bounding_box().top_left, display.bounding_box().size)
         .into_styled(
             PrimitiveStyleBuilder::new()
@@ -396,12 +467,21 @@ where
         )
         .draw(display)?;
 
+    
+    info!(
+        "Info 7",
+    );
+    
     Text::new(
         "Hello Rust!",
         Point::new(10, (display.bounding_box().size.height - 10) as i32 / 2),
         MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE.into()),
     )
     .draw(display)?;
+
+    info!(
+        "Info 8",
+    );
 
     info!("LED rendering done");
 
