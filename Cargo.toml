@@ -18,18 +18,24 @@ native = ["esp-idf-sys/native"]
 
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
-esp-idf-sys = { version = "=0.30.5", features = ["binstart"] }
-esp-idf-svc = { version = "0.36.6", features = ["experimental"] } #0.36.6
-esp-idf-hal = "=0.32.10"
-embedded-svc = "=0.16"
+esp-idf-sys = { version = "=0.30.6", features = ["binstart"] }
+esp-idf-svc = { version = "0.37.2", features = ["experimental"] } #0.36.6
+esp-idf-hal = "=0.33.1"
+embedded-svc = "=0.17.2"
+embedded-hal = "0.2"
+embedded-graphics = "0.7"
+display-interface = "0.4"
+display-interface-spi = "0.4"
 log = "0.4"
-regex = "1"
+#regex = "1"
 #scraper = "0.12.0"
 #kuchiki = "0.8.1"
-html5ever = "0.25.1"
+#html5ever = "0.25.1"
 #select = { git = "https://github.com/utkarshkukreti/select.rs", tag = "0.5.0"}
-
-parking_lot = { version = "=0.12.0", path = "../parking_lot" }
+#selectors = "0.23.0"
+#html_parser = "0.6.2"
+soup = "0.5.1"
+ili9341 = { version = "0.5", git = "https://github.com/yuri91/ili9341-rs" }
 
 [build-dependencies]
 embuild = "0.28"
@@ -38,5 +44,5 @@ anyhow = "1"
 
 [patch.crates-io]
 #libc = { version = "0.2.119", git = "https://github.com/rust-lang/libc"}
-parking_lot_core = { version = "=0.9.1", path = "../parking_lot/core" } #version = "0.9.1"
-parking_lot = { version = "=0.12.0", path = "../parking_lot" }
+#parking_lot = { package = "parking_lot", version = "0.11", path = "../parking_lot" }
+parking_lot = { package = "parking_lot", version = "0.12", git = "https://github.com/Amanieu/parking_lot"}
