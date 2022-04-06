@@ -368,17 +368,10 @@ fn kaluga_hello_world(
     info!(
         "Info 1",
     );
-    let mut backlight = backlight.into_output()?;
+    //let mut backlight = backlight.into_output()?;
     
-    info!(
-        "Info 1.5",
-    );
+    //backlight.set_low()?;
 
-    backlight.set_low()?;
-
-    info!(
-        "Info 2",
-    );
 
     //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/spi_master.html
     let di = SPIInterfaceNoCS::new(
@@ -386,48 +379,18 @@ fn kaluga_hello_world(
             spi,
             spi::Pins {
                 sclk,
-                sdo: miso,
-                sdi: Some(mosi),
+                sdo: mosi,
+                sdi: Some(miso),
                 cs: Some(cs),
-            },
+                },
             config,
         )?,
         dc.into_output()?,
     );
 
-    // let peripherals = Peripherals::take().unwrap();
-    // let pins = peripherals.pins;
-
-    // let spi = peripherals.spi2;
-
-    // let sclk = peripherals.pins.gpio19;
-    // let miso = peripherals.pins.gpio25;
-    // let mosi = peripherals.pins.gpio23;
-    // let cs = peripherals.pins.gpio22;
-
-    // println!("Starting SPI loopback test");
-    // let config = <spi::config::Config as Default>::default().baudrate((26_000_000).into());
-    // let mut di = spi::Master::<spi::SPI2, _, _, _, _>::new(
-    //     spi,
-    //     spi::Pins {
-    //         sclk,
-    //         sdo: miso,
-    //         sdi: Some(mosi),
-    //         cs: Some(cs),
-    //     },
-    //     config,
-    //     )?,
-    //     dc.into_output()?,
-    // );
-    info!(
-        "Info 3",
-    );
-
+    //let dc = dc.into_output();
     let reset = rst.into_output()?;
-
-    info!(
-        "Info 4",
-    );
+    let mut backlight = backlight.into_output()?;
 
     let mut display = ili9341::Ili9341::new(
         di,
@@ -451,11 +414,16 @@ where
     D: DrawTarget + Dimensions,
     D::Color: From<Rgb565>,
 {
+    //let rect = Rectangle::new(display.bounding_box().top_left, display.bounding_box().size);
+
     display.clear(Rgb565::BLACK.into())?;
+    //display.fill_solid(&rect, Rgb565::GREEN.into());
 
     info!(
         "Info 6",
     );
+
+    
 
     Rectangle::new(display.bounding_box().top_left, display.bounding_box().size)
         .into_styled(
