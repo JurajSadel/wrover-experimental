@@ -94,6 +94,8 @@ fn main() -> anyhow::Result<()> {
         //let votes = node.find(Class("vote-count-post")).next().unwrap().text();
     //    println!("Node {:?}", node);
     println!();
+    // let peripherals = Peripherals::take().unwrap();
+    // let pins = peripherals.pins;
     //}
     //loop {
         info!("About to fetch content from {}", url);
@@ -114,6 +116,17 @@ fn main() -> anyhow::Result<()> {
     //println!("Soup {:?}", soup);
     //let times = soup.tag("table").find_all().nth(n);
 
+    let peripherals = Peripherals::take().unwrap();
+    let pins = peripherals.pins;
+    let spi = peripherals.spi2;
+    let backlight = pins.gpio5;
+    let dc = pins.gpio21;
+    let rst = pins.gpio18;
+    let sclk = pins.gpio19;
+    let miso = pins.gpio25;
+    let mosi = pins.gpio23;
+    let cs = pins.gpio22;
+
     for (i, link) in soup.tag("tr").find_all().enumerate() {
         //println!("{:?}\n\n",link.display());
         let href = link.tag("h3").find_all().enumerate();
@@ -130,14 +143,37 @@ fn main() -> anyhow::Result<()> {
             //     }
             // }
 
+            let txt = &node.text();
+            println!("txt: {:?}", &txt);
             
-            println!("Node: {:?}", &node.text());
-            // if let Some(n) = node {
-            //     println!("N, {:?}", n);
-            // }
+            // let peripherals = Peripherals::take().unwrap();
+            // let pins = peripherals.pins;
+            //let spi = peripherals.spi2;
+
+            info!("Dalsie kolo");
+            // let backlight = pins.gpio5;
+            // let dc = pins.gpio21;
+            // let rst = pins.gpio18;
+            // let sclk = pins.gpio19;
+            // let miso = pins.gpio25;
+            // let mosi = pins.gpio23;
+            // let cs = pins.gpio22;
+
+            kaluga_hello_world(
+                &backlight,
+                &dc,
+                &rst,
+                spi,
+                &sclk,
+                &miso,
+                &mosi,
+                &cs,
+                txt,
+            )?;
             
         }
     }
+    //println!("Txt {:?}", &txt);
 
         //println!("Doc{:?}", &document);
 
@@ -254,20 +290,19 @@ Element(Element { id: None, name: "tr", variant: Normal, attributes: {"data-ttin
 
     drop(wifi);
     info!("Wifi stopped");
-    let peripherals = Peripherals::take().unwrap();
-    let pins = peripherals.pins;
-    //let spi = peripherals.spi2;
+    // let peripherals = Peripherals::take().unwrap();
+    // let pins = peripherals.pins;
 
-    kaluga_hello_world(
-        pins.gpio5,
-        pins.gpio21,
-        pins.gpio18,
-        peripherals.spi2,
-        pins.gpio19,
-        pins.gpio25,
-        pins.gpio23,
-        pins.gpio22,
-    )?;
+    // kaluga_hello_world(
+    //     pins.gpio5,
+    //     pins.gpio21,
+    //     pins.gpio18,
+    //     peripherals.spi2,
+    //     pins.gpio19,
+    //     pins.gpio25,
+    //     pins.gpio23,
+    //     pins.gpio22,
+    // )?;
 
     /*
     backlight: gpio::Gpio5<gpio::Unknown>, //6
@@ -349,14 +384,15 @@ fn wifi(
 }
 
 fn kaluga_hello_world(
-    backlight: gpio::Gpio5<gpio::Unknown>, //6
+    backlight: &gpio::Gpio5<gpio::Unknown>, //6
     dc: gpio::Gpio21<gpio::Unknown>, //13
-    rst: gpio::Gpio18<gpio::Unknown>, //16
+    rst: &gpio::Gpio18<gpio::Unknown>, //16
     spi: spi::SPI2, //3
-    sclk: gpio::Gpio19<gpio::Unknown>, //15
-    miso: gpio::Gpio25<gpio::Unknown>,
-    mosi: gpio::Gpio23<gpio::Unknown>,
-    cs: gpio::Gpio22<gpio::Unknown>, //11
+    sclk: &gpio::Gpio19<gpio::Unknown>, //15
+    miso: &gpio::Gpio25<gpio::Unknown>,
+    mosi: &gpio::Gpio23<gpio::Unknown>,
+    cs: &gpio::Gpio22<gpio::Unknown>, //11
+    text: &String,
 ) -> anyhow::Result<()> {
     info!(
         "About to initialize the ILI9341 SPI LED driver",
@@ -404,12 +440,12 @@ fn kaluga_hello_world(
         "Info 5",
     );
 
-    led_draw(&mut display).map_err(|_| anyhow::anyhow!("Display"))
+    led_draw(&mut display, text).map_err(|_| anyhow::anyhow!("Display"))
 
 }
 
 #[allow(dead_code)]
-fn led_draw<D>(display: &mut D) -> Result<(), D::Error>
+fn led_draw<D>(display: &mut D, text: &String) -> Result<(), D::Error>
 where
     D: DrawTarget + Dimensions,
     D::Color: From<Rgb565>,
@@ -423,8 +459,6 @@ where
         "Info 6",
     );
 
-    
-
     Rectangle::new(display.bounding_box().top_left, display.bounding_box().size)
         .into_styled(
             PrimitiveStyleBuilder::new()
@@ -435,14 +469,13 @@ where
         )
         .draw(display)?;
 
-    
     info!(
         "Info 7",
     );
-    
+
     Text::new(
-        "Hello Rust!",
-        Point::new(10, (display.bounding_box().size.height - 10) as i32 / 2),
+        text,
+        Point::new(10, (display.bounding_box().size.height - 10) as i32 ),
         MonoTextStyle::new(&FONT_10X20, Rgb565::WHITE.into()),
     )
     .draw(display)?;
