@@ -1,3 +1,4 @@
+#![feature(iter_advance_by)]
 use embedded_graphics::mono_font::iso_8859_2;
 use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 
@@ -20,6 +21,7 @@ use embedded_graphics::pixelcolor::*;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
 use embedded_graphics::text::*;
+use ili9341::Scroller;
 
 //use std::error::Error;
 use std::sync::Arc;
@@ -168,38 +170,80 @@ fn main() -> anyhow::Result<()> {
         ili9341::DisplaySize240x320,
     ).map_err(|_| anyhow::anyhow!("Display"))?;
 
+    let mut scroller = display.configure_vertical_scroll(20, 5).map_err(|_| anyhow::anyhow!("Display"))?;
+    // display.scroll_vertically(scroller, 5);
+
     //end of display
 
 
-    let mut merged_string = String::new();
+    let mut merged_string = String::from(" \n".to_string());
     let mut merge_counter = 0;
+    let mut display_counter = 0;
     for (_, link) in soup.tag("tr").find_all().enumerate() {
         let href = link.tag("h3").find_all().enumerate();
 
         for (_, node) in href {
             let text = &node.text();
-            println!("txt: {:?}", &text);
+            let re = Regex::new(r"\s+").unwrap();
+            let t = re.replace_all(&text, " ").to_string();
 
             if merge_counter != 3 {
+                merged_string+=&t;
                 merge_counter+=1;
-                merged_string+=text;
+
             }
             else {
-                merged_string.replace("\n", " ");
-                let re = Regex::new(r"\s+").unwrap();
-                let t = re.replace_all(&merged_string, " ").to_string();
-                println!("Merged string :{:?}", t);
-                led_draw(&mut display, &t);
-                info!("About to sleep for 3 secs");
-                std::thread::sleep(Duration::from_secs(3));
-                merged_string.clear();
+                println!("Merged string :{:?}", merged_string);
+                //led_draw(&mut display, &merged_string);
+                info!("About to sleep for 1 sec");
+                //std::thread::sleep(Duration::from_secs(1));
+                //merged_string.clear();
+                merged_string+=" \n";
                 merged_string+=text;
+                merged_string+=" \n";
                 merge_counter = 1;
+                display_counter+=1;
+
+                if display_counter == 5 {
+                    break;
+                }
             }
-
-            info!("Dalsie kolo");
-
         }
+        led_draw(&mut display, &merged_string);
+        display.scroll_vertically(&mut scroller, 5);
+        info!("Dalsie kolo");
+
+
+
+        /************** */
+
+        // for (_, node) in href {
+        //     let text = &node.text();
+        //     println!("txt: {:?}", &text);
+
+        //     if merge_counter != 3 {
+        //         merge_counter+=1;
+        //         merged_string+=text;
+        //     }
+        //     else {
+        //         //merged_string.replace("\n", " ");
+        //         let re = Regex::new(r"\s+").unwrap();
+        //         let t = re.replace_all(&merged_string, " ").to_string();
+        //         println!("Merged string :{:?}", t);
+        //         led_draw(&mut display, &t);
+        //         info!("About to sleep for 3 secs");
+        //         std::thread::sleep(Duration::from_secs(3));
+        //         merged_string.clear();
+        //         merged_string+=text;
+        //         merge_counter = 1;
+        //     }
+        //     display.scroll_vertically(&mut scroller, 5);
+        //     info!("Dalsie kolo");
+
+        // }
+
+
+
     }
 
         info!("About to sleep");
@@ -281,25 +325,32 @@ where
 {
     //let rect = Rectangle::new(display.bounding_box().top_left, display.bounding_box().size);
 
-    display.clear(Rgb565::BLACK.into())?;
+    //display.clear(Rgb565::BLACK.into())?;
     //display.fill_solid(&rect, Rgb565::GREEN.into());
 
     Rectangle::new(display.bounding_box().top_left, display.bounding_box().size)
         .into_styled(
             PrimitiveStyleBuilder::new()
-                .fill_color(Rgb565::BLUE.into())
+                .fill_color(Rgb565::BLACK.into())
                 .stroke_color(Rgb565::YELLOW.into())
                 .stroke_width(1)
                 .build(),
         )
         .draw(display)?;
 
-    Text::new(
-        text,
-        Point::new(10, (display.bounding_box().size.height - 10) as i32 / 2),
+    Text::with_alignment(
+        &text,
+        Point::new(3, (display.bounding_box().size.height - 10) as i32 / 2),
         MonoTextStyle::new(&embedded_graphics::mono_font::iso_8859_2::FONT_10X20, Rgb565::WHITE.into()),
-    )
-    .draw(display)?;
+        Alignment::Left,
+    ).draw(display)?;
+
+    // Text::new(
+    //     text,
+    //     Point::new(10, (display.bounding_box().size.height - 10) as i32 / 2),
+    //     MonoTextStyle::new(&embedded_graphics::mono_font::iso_8859_2::FONT_10X20, Rgb565::WHITE.into()),
+    // )
+    // .draw(display)?;
 
     info!("LED rendering done");
 
