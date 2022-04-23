@@ -39,7 +39,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::ptr;
 
-//use time::Time;
+use time::OffsetDateTime;
+use time::format_description;
 
 use anyhow::bail;
 //use anyhow::Result;
@@ -104,7 +105,8 @@ fn main() -> anyhow::Result<()> {
 
     unsafe {
         let timer: *mut time_t = ptr::null_mut();
-        esp_idf_sys::time(timer);
+        //esp_idf_sys::time(timer);
+        println!("Timer0: {:?}", esp_idf_sys::time(timer));
         //let timer: 
         //let mut t;
         // for _ in 0..1000 {
@@ -112,6 +114,55 @@ fn main() -> anyhow::Result<()> {
         //     println!("Timer :{:?}", t);
         // }
     }
+
+    
+
+    unsafe {
+        let timer: *mut time_t = ptr::null_mut();
+        let time = esp_idf_sys::time(timer);
+        println!("Timer1: {:?}", time);
+        //let timer: 
+        //let mut t;
+        //for _ in 0..1000 {
+        //     t = esp_idf_sys::time(timer);
+        //     println!("Timer :{:?}", t);
+        // }
+        use time::macros::offset;
+        let date = OffsetDateTime::from_unix_timestamp(time as i64)?.to_offset(offset!(+2)).time();
+        println!("date1 {:?}", &date.to_string());
+
+        std::thread::sleep(Duration::from_secs(5));
+
+
+        //let a = OffsetDateTime::from("14:31:58.0");
+        //22.4.2022 12:44:00
+        //"2020-01-02 03:04:05 +06:07:08"
+        // let format = format_description::parse(
+        //     "[day].[month].[year] [hour]:[minute]:[second] [offset_hour \
+        //     sign:mandatory]:[offset_minute]:[offset_second]",
+        // )?;
+                                                            //23.04.2022 20:16:00 +02:00:00
+        let qq = OffsetDateTime::parse("22.04.2022 12:44:00 +02:00:00", &format)?;
+        let qq = qq.time();
+        println!("Date1: {:?}", &qq.to_string());
+
+        let timer: *mut time_t = ptr::null_mut();
+        let time = esp_idf_sys::time(timer);
+        let qq = OffsetDateTime::from_unix_timestamp(time as i64)?.to_offset(offset!(+2)).time();
+        println!("date2 {:?}", &qq.to_string());
+
+        if date > qq {
+            println!("Hej");
+        }
+        else {
+            println!("Niet");
+        }
+
+    }
+
+    
+
+
 
     // peripherals
     let peripherals = Peripherals::take().unwrap();
@@ -209,37 +260,65 @@ fn main() -> anyhow::Result<()> {
     let mut merged_string = String::from(" \n".to_string());
     let mut merge_counter = 0;
     let mut display_counter = 0;
-    for (_, link) in soup.tag("tr").find_all().enumerate() {
-        let href = link.tag("h3").find_all().enumerate();
-
-        for (_, node) in href {
-            let text = &node.text();
-            let re = Regex::new(r"\s+").unwrap();
-            let t = re.replace_all(&text, " ").to_string();
-
-            if merge_counter != 3 {
-                merged_string+=&t;
-                merge_counter+=1;
-
-            }
-            else {
-                println!("Merged string :{:?}", merged_string);
-                //led_draw(&mut display, &merged_string);
-                info!("About to sleep for 1 sec");
-                //std::thread::sleep(Duration::from_secs(1));
-                //merged_string.clear();
-                merged_string+=" \n";
-                merged_string+=text;
-                merged_string+="\n";
-                merge_counter = 1;
-                display_counter+=1;
-
-                if display_counter == 5 {
-                    led_draw(&mut display, &merged_string);
-                    break;
-                }
-            }
+    for link in soup.tag("tr").find_all() {
+        //println!("Link: {:?}\n", link.display());
+        //let tmp = link.class("dep-row dep-row-first").find_all();
+        //let tmp = link.attr_name("data-datetime").find_all();
+        //let tmp1 = link.attr_value("data-datetime").find_all();
+        let qwe = link.attr_name("data-datetime").find_all();
+        link.display();
+        println!("\n\n");
+        for q in qwe {
+            q.display();
         }
+
+        let l = link.attrs();
+
+        //let atr = link.get("data-datetime");
+        //println!("Attr = {:?}", &atr.unwrap());
+        // for a in tmp {
+        //     a.display();
+        // }
+        
+        
+        /*let tmp = link.attrs();*/
+        for (s1, s2) in l {
+            println!("S1 {:?}/tS2{:?}", &s1, &s2);
+        }
+        
+
+        //println!("tmp: {:?}", tmp.display());
+        //let href = link.tag("h3").find_all().enumerate();
+
+        // for node in tmp {
+        //     let text = &node.text();
+        //     //println!("Node: {:?}", node.display());
+        //     let re = Regex::new(r"\s+").unwrap();
+        //     let t = re.replace_all(&text, " ").to_string();
+
+        //     if merge_counter != 3 {
+        //         merged_string+=&t;
+        //         merge_counter+=1;
+
+        //     }
+        //     else {
+        //         //println!("Merged string :{:?}", merged_string);
+        //         //led_draw(&mut display, &merged_string);
+        //         info!("About to sleep for 1 sec");
+        //         //std::thread::sleep(Duration::from_secs(1));
+        //         //merged_string.clear();
+        //         merged_string+=" \n";
+        //         merged_string+=text;
+        //         merged_string+="\n";
+        //         merge_counter = 1;
+        //         display_counter+=1;
+
+        //         if display_counter == 5 {
+        //             led_draw(&mut display, &merged_string);
+        //             break;
+        //         }
+        //     }
+        // }
         //display.scroll_vertically(&mut scroller, 20);
         //info!("Dalsie kolo");
 
