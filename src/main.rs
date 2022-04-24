@@ -34,6 +34,7 @@ use embedded_text::{
 use ili9341::Scroller;
 
 use regex::Regex;
+use time::format_description::modifier::Hour;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -41,6 +42,7 @@ use std::ptr;
 
 use time::OffsetDateTime;
 use time::format_description;
+use time::macros::offset;
 
 use anyhow::bail;
 //use anyhow::Result;
@@ -80,7 +82,6 @@ fn main() -> anyhow::Result<()> {
         5 display new results
         6 sleep for 45-60 secs
     */
-    //unsafe extern "C" fn time(_timer: *mut time_t) -> time_t
 
     // wifi part
     #[allow(unused)]
@@ -101,68 +102,7 @@ fn main() -> anyhow::Result<()> {
 
     while sntp.get_sync_status() != SyncStatus::Completed {}
 
-    info!("Waiting done");
-
-    unsafe {
-        let timer: *mut time_t = ptr::null_mut();
-        //esp_idf_sys::time(timer);
-        println!("Timer0: {:?}", esp_idf_sys::time(timer));
-        //let timer: 
-        //let mut t;
-        // for _ in 0..1000 {
-        //     t = esp_idf_sys::time(timer);
-        //     println!("Timer :{:?}", t);
-        // }
-    }
-
-    
-
-    unsafe {
-        let timer: *mut time_t = ptr::null_mut();
-        let time = esp_idf_sys::time(timer);
-        println!("Timer1: {:?}", time);
-        //let timer: 
-        //let mut t;
-        //for _ in 0..1000 {
-        //     t = esp_idf_sys::time(timer);
-        //     println!("Timer :{:?}", t);
-        // }
-        use time::macros::offset;
-        let date = OffsetDateTime::from_unix_timestamp(time as i64)?.to_offset(offset!(+2)).time();
-        println!("date1 {:?}", &date.to_string());
-
-        std::thread::sleep(Duration::from_secs(5));
-
-
-        //let a = OffsetDateTime::from("14:31:58.0");
-        //22.4.2022 12:44:00
-        //"2020-01-02 03:04:05 +06:07:08"
-        // let format = format_description::parse(
-        //     "[day].[month].[year] [hour]:[minute]:[second] [offset_hour \
-        //     sign:mandatory]:[offset_minute]:[offset_second]",
-        // )?;
-                                                            //23.04.2022 20:16:00 +02:00:00
-        let qq = OffsetDateTime::parse("22.04.2022 12:44:00 +02:00:00", &format)?;
-        let qq = qq.time();
-        println!("Date1: {:?}", &qq.to_string());
-
-        let timer: *mut time_t = ptr::null_mut();
-        let time = esp_idf_sys::time(timer);
-        let qq = OffsetDateTime::from_unix_timestamp(time as i64)?.to_offset(offset!(+2)).time();
-        println!("date2 {:?}", &qq.to_string());
-
-        if date > qq {
-            println!("Hej");
-        }
-        else {
-            println!("Niet");
-        }
-
-    }
-
-    
-
-
+    info!("Waiting for SyncStatus done");
 
     // peripherals
     let peripherals = Peripherals::take().unwrap();
@@ -181,7 +121,6 @@ fn main() -> anyhow::Result<()> {
     .baudrate((26_000_000).into());
 
     //let mut backlight = backlight.into_output()?;
-
     //backlight.set_low()?;
 
 
@@ -210,36 +149,29 @@ fn main() -> anyhow::Result<()> {
         Orientation::PortraitFlipped,
         ili9341::DisplaySize240x320,
     ).map_err(|_| anyhow::anyhow!("Display"))?;
-    
-    // use time::UtcOffset;
-    // let local_offset = current_local_offset();
-    // println!("{:?}, time", local_offset);
+
+    led_draw(&mut display, &"".to_string(), &"Initialization in progress...".to_string());
 
     let url = String::from("https://idos.idnes.cz/en/brno/odjezdy/vysledky/?f=Technologick%C3%BD%20park&fc=302003");
 
-    println!();
+    let mut text_to_dislay: Vec<String> = Vec::new();
+    loop {
+    info!("About to fetch content from {}", url);
 
-    
-    // let peripherals = Peripherals::take().unwrap();
-    // let pins = peripherals.pins;
-    //}
-    //loop {
-        info!("About to fetch content from {}", url);
+    let mut client = EspHttpClient::new_default()?;
 
-        let mut client = EspHttpClient::new_default()?;
+    let response = client.get(&url)?.submit()?;
 
-        let response = client.get(&url)?.submit()?;
+    let body: Result<Vec<u8>, _> = Bytes::<_, 8>::new(response.reader()).collect();
 
-        let body: Result<Vec<u8>, _> = Bytes::<_, 8>::new(response.reader()).collect();
+    let body = body?;
+    let str = String::from_utf8(body)?;
+    //let str = String::from_utf8_lossy(&body)?;
 
-        let body = body?;
-        let str = String::from_utf8(body)?;
-        //let str = String::from_utf8_lossy(&body)?;
+    //let document = Html::parse_document(&body);
+    //let document = Dom::parse(&String::from_utf8_lossy(&body))?;
 
-        //let document = Html::parse_document(&body);
-        //let document = Dom::parse(&String::from_utf8_lossy(&body))?;
-
-        let soup = Soup::new(&str);
+    let soup = Soup::new(&str);
     //println!("Soup {:?}", soup);
     //let times = soup.tag("table").find_all().nth(n);
 
@@ -256,7 +188,72 @@ fn main() -> anyhow::Result<()> {
 
     //end of display
 
+    
+    
+    
+    let links = soup.tag("tr").find_all();
 
+    for link in links {
+        let time = link.get("data-datetime");
+        let direction = link.get("data-stationname");
+        
+        if direction.is_some() {
+            let mut time = time.unwrap();
+
+            //add offset
+            time.push_str(" +02:00:00");
+            println!("Time0: {:?}", &time);
+            let format = format_description::parse(
+                    "[day].[month padding:none].[year] [hour padding:zero]:[minute]:[second] [offset_hour \
+                    sign:mandatory]:[offset_minute]:[offset_second]",
+                )?;
+            
+            
+            unsafe {
+                let timer: *mut time_t = ptr::null_mut();
+                let acutal_time_timestamp = esp_idf_sys::time(timer);
+                //println!("acutal_time_timestamp: {:?}", esp_idf_sys::time(timer));
+
+                let date = OffsetDateTime::from_unix_timestamp(acutal_time_timestamp as i64)?.to_offset(offset!(+2)).time();
+                println!("acutal_time_timestamp {:?}", &date.to_string());
+
+                
+
+                let qq = OffsetDateTime::parse(&time, &format)?;
+                let qq = qq.time();
+                println!("Time parsed: {:?}", qq.to_string());
+
+                //println!("Comparision: Actual {:?} - Parsed {:?} = {:?}", &date, &qq, &date > &qq);
+                //println!("Formated: {:?}", format!("{}\n{}\n", &direction.unwrap(), &qq.time().to_string()));
+                
+                text_to_dislay.push(format!("{}:\n{}\n", &direction.unwrap(), &qq.to_string()));
+            }
+            
+            
+        } else {
+            continue;
+        }
+
+        // match link.get("data-datetime") {
+        //     Some(date) => { println!("Date: {:?}", &date)},
+        //     None => (),
+        // };
+
+        }
+        println!("text_to_display: {:?}", &text_to_dislay);
+        let s: String = text_to_dislay.into_iter().take(6).collect();
+        unsafe {
+            let timer: *mut time_t = ptr::null_mut();
+            //let acutal_time_timestamp = esp_idf_sys::time(timer);
+
+            let time = OffsetDateTime::from_unix_timestamp(esp_idf_sys::time(timer) as i64)?.to_offset(offset!(+2)).time();
+
+            //format!("Actual time: {}\n", &time.to_string())
+            led_draw(&mut display, &s, &format!("Actual time: {}\n", &time.to_string()));
+
+        }
+
+    /* 
     let mut merged_string = String::from(" \n".to_string());
     let mut merge_counter = 0;
     let mut display_counter = 0;
@@ -321,6 +318,7 @@ fn main() -> anyhow::Result<()> {
         // }
         //display.scroll_vertically(&mut scroller, 20);
         //info!("Dalsie kolo");
+        
 
 
 
@@ -352,11 +350,11 @@ fn main() -> anyhow::Result<()> {
         // }
 
 
+*/
 
     }
-
-        info!("About to sleep");
-        //thread::sleep(Duration::from_millis(1000));
+    info!("About to sleep");
+    //thread::sleep(Duration::from_millis(1000));
 
     drop(wifi);
     info!("Wifi stopped");
@@ -427,7 +425,7 @@ fn wifi(
 }
 
 #[allow(dead_code)]
-fn led_draw<D>(display: &mut D, text: &String) -> Result<(), D::Error>
+fn led_draw<D>(display: &mut D, text: &String, time: &String) -> Result<(), D::Error>
 where
     D: DrawTarget + Dimensions,
     D::Color: From<Rgb565>,
@@ -437,7 +435,7 @@ where
     //display.clear(Rgb565::BLACK.into())?;
     //display.fill_solid(&rect, Rgb565::GREEN.into());
 
-    Rectangle::new(Point::zero(), Size::new(300, 320))
+    Rectangle::new(Point::zero(), Size::new(300, 20))
         .into_styled(
             TextBoxStyleBuilder::new()
         .height_mode(HeightMode::FitToText)
@@ -448,11 +446,29 @@ where
         //.draw(display)?;
 
     Text::with_alignment(
-        &text,
-        Point::new(3, 0),
+        &time,
+        Point::new(0, 15),
         MonoTextStyle::new(&embedded_graphics::mono_font::iso_8859_2::FONT_10X20, Rgb565::WHITE.into()),
         Alignment::Left,
     ).draw(display)?;
+
+    Rectangle::new(Point::zero(), Size::new(300, 300))
+        .into_styled(
+            TextBoxStyleBuilder::new()
+        //.height_mode(HeightMode::FitToText)
+        .alignment(HorizontalAlignment::Justified)
+        .paragraph_spacing(3)
+        .build(),
+        );
+        //.draw(display)?;
+
+    Text::with_alignment(
+        &text,
+        Point::new(0, 30),
+        MonoTextStyle::new(&embedded_graphics::mono_font::iso_8859_2::FONT_10X20, Rgb565::WHITE.into()),
+        Alignment::Left,
+    ).draw(display)?;
+    
 
     // let character_style = MonoTextStyle::new(&embedded_graphics::mono_font::iso_8859_2::FONT_10X20, Rgb565::WHITE.into());
     // //let textbox_style = TextBoxStyleBuilder::new()
