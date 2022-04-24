@@ -1,6 +1,7 @@
 #![feature(iter_advance_by)]
 use embedded_graphics::mono_font::iso_8859_2;
-use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
+use esp_idf_sys::time_t;
+use esp_idf_sys::{self as _};
 
 use embedded_svc::http::client::*;
 use embedded_svc::io::Bytes;
@@ -9,48 +10,51 @@ use embedded_svc::wifi::*;
 use esp_idf_svc::http::client::*;
 use esp_idf_svc::netif::*;
 use esp_idf_svc::nvs::*;
+use esp_idf_svc::sntp;
+use esp_idf_svc::sntp::SyncStatus;
 use esp_idf_svc::sysloop::*;
 use esp_idf_svc::wifi::*;
 
-use esp_idf_hal::spi;
 use esp_idf_hal::delay;
 use esp_idf_hal::prelude::Peripherals;
+use esp_idf_hal::spi;
 
 use embedded_graphics::mono_font::{ascii::FONT_10X20, MonoTextStyle};
 use embedded_graphics::pixelcolor::*;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
 use embedded_graphics::text::*;
+use embedded_text::{
+    alignment::HorizontalAlignment,
+    style::{HeightMode, TextBoxStyleBuilder},
+    TextBox,
+};
+
 use ili9341::Scroller;
 
-//use std::error::Error;
+use regex::Regex;
+use time::format_description::modifier::Hour;
+
+use std::ptr;
 use std::sync::Arc;
+use std::thread;
 use std::time::Duration;
 
-use regex::Regex;
+use time::format_description;
+use time::macros::offset;
+use time::OffsetDateTime;
 
 use anyhow::bail;
-//use anyhow::Result;
 use log::*;
 
-//use soup::prelude::*;
-
-//use html_parser::{Dom, Element, Node};
 use soup::prelude::*;
 
 use ili9341::{self, Orientation};
 
 use display_interface_spi::SPIInterfaceNoCS;
-//use html_parser::Node::Element;
 
-// use select::document::Document;
-// use select::predicate::{Attr, Class, Name, Predicate};
-
-// use scraper::Html;
-
-
-const SSID: &str = "test";//env!("RUST_ESP32_STD_DEMO_WIFI_SSID");
-const PASS: &str = "qwerqwer";//env!("RUST_ESP32_STD_DEMO_WIFI_PASS");
+const SSID: &str = "test"; //env!("RUST_ESP32_STD_DEMO_WIFI_SSID");
+const PASS: &str = "qwerqwer"; //env!("RUST_ESP32_STD_DEMO_WIFI_PASS");
 
 fn main() -> anyhow::Result<()> {
     // Temporary. Will disappear once ESP-IDF 4.4 is released, but for now it is necessary to call this function once,
@@ -59,7 +63,16 @@ fn main() -> anyhow::Result<()> {
 
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    //wifi part
+    /*
+    1 initialization(wifi, display, peripherals,....)
+    2 loop
+        3 fetch data from url
+        4 reload vector (5 lines)
+        5 display new results
+        6 sleep for 45-60 secs
+    */
+
+    // wifi part
     #[allow(unused)]
     let netif_stack = Arc::new(EspNetifStack::new()?);
     #[allow(unused)]
@@ -72,50 +85,14 @@ fn main() -> anyhow::Result<()> {
         default_nvs.clone(),
     )?;
 
-    let url = String::from("https://idos.idnes.cz/en/brno/odjezdy/vysledky/?f=Technologick%C3%BD%20park&fc=302003");
+    let sntp = sntp::EspSntp::new_default()?;
+    info!("SNTP initialized");
 
-    //let mut client = EspHttpClient::new_default()?;
+    while sntp.get_sync_status() != SyncStatus::Completed {}
 
-    //let response = client.get(&url)?.submit()?;
-    //let body: Result<Vec<u8>, _> = Bytes::<_, 64>::new(response.reader()).collect();
+    info!("Waiting for SyncStatus done");
 
-    //let document = Html::parse_document(html);
-    //println!("Doc {:?}", document);
-    //let document = Document::from(html);
-    // println!("# Menu");
-    // for node in document.nodes {
-    //     println!("Data {:?}", node.data);
-    //     println!("F.CH {:?}", node.first_child);
-    //     //println!("select {:?}", node.find(Class("departures-table__cell")));
-    // }
-    //for node in document.find(Class("departures-table__cell")) {
-        //let question = node.find(Class("question-hyperlink")).next().unwrap();
-        //let votes = node.find(Class("vote-count-post")).next().unwrap().text();
-    //    println!("Node {:?}", node);
-    println!();
-    // let peripherals = Peripherals::take().unwrap();
-    // let pins = peripherals.pins;
-    //}
-    //loop {
-        info!("About to fetch content from {}", url);
-
-        let mut client = EspHttpClient::new_default()?;
-
-        let response = client.get(&url)?.submit()?;
-
-        let body: Result<Vec<u8>, _> = Bytes::<_, 8>::new(response.reader()).collect();
-
-        let body = body?;
-        let str = String::from_utf8(body)?;
-        //let str = String::from_utf8_lossy(&body)?;
-
-        //let document = Html::parse_document(&body);
-        //let document = Dom::parse(&String::from_utf8_lossy(&body))?;
-
-        let soup = Soup::new(&str);
-    //println!("Soup {:?}", soup);
-    //let times = soup.tag("table").find_all().nth(n);
-
+    // peripherals
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
     let spi = peripherals.spi2;
@@ -128,21 +105,10 @@ fn main() -> anyhow::Result<()> {
     let cs = pins.gpio22;
 
     // display
+    let config = <spi::config::Config as Default>::default().baudrate((26_000_000).into());
 
-    info!(
-        "About to initialize the ILI9341 SPI LED driver",
-    );
-
-    let config = <spi::config::Config as Default>::default()
-        .baudrate((26_000_000).into());
-
-    info!(
-        "Info 1",
-    );
     //let mut backlight = backlight.into_output()?;
-
     //backlight.set_low()?;
-
 
     //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/spi_master.html
     let di = SPIInterfaceNoCS::new(
@@ -153,7 +119,7 @@ fn main() -> anyhow::Result<()> {
                 sdo: mosi,
                 sdi: Some(miso),
                 cs: Some(cs),
-                },
+            },
             config,
         )?,
         dc.into_output()?,
@@ -166,88 +132,112 @@ fn main() -> anyhow::Result<()> {
         di,
         reset,
         &mut delay::Ets,
-        Orientation::Portrait,
+        Orientation::PortraitFlipped,
         ili9341::DisplaySize240x320,
-    ).map_err(|_| anyhow::anyhow!("Display"))?;
+    )
+    .map_err(|_| anyhow::anyhow!("Display"))?;
 
-    let mut scroller = display.configure_vertical_scroll(20, 5).map_err(|_| anyhow::anyhow!("Display"))?;
-    // display.scroll_vertically(scroller, 5);
+    led_draw(
+        &mut display,
+        &"".to_string(),
+        &"Initialization in progress...".to_string(),
+    );
 
-    //end of display
+    let url = String::from(
+        "https://idos.idnes.cz/en/brno/odjezdy/vysledky/?f=Technologick%C3%BD%20park&fc=302003",
+    );
 
+    let mut text_to_dislay: Vec<String> = Vec::new();
 
-    let mut merged_string = String::from(" \n".to_string());
-    let mut merge_counter = 0;
-    let mut display_counter = 0;
-    for (_, link) in soup.tag("tr").find_all().enumerate() {
-        let href = link.tag("h3").find_all().enumerate();
+    loop {
+        info!("About to fetch content from {}", url);
 
-        for (_, node) in href {
-            let text = &node.text();
-            let re = Regex::new(r"\s+").unwrap();
-            let t = re.replace_all(&text, " ").to_string();
+        let mut client = EspHttpClient::new_default()?;
 
-            if merge_counter != 3 {
-                merged_string+=&t;
-                merge_counter+=1;
+        info!("after new default");
 
-            }
-            else {
-                println!("Merged string :{:?}", merged_string);
-                //led_draw(&mut display, &merged_string);
-                info!("About to sleep for 1 sec");
-                //std::thread::sleep(Duration::from_secs(1));
-                //merged_string.clear();
-                merged_string+=" \n";
-                merged_string+=text;
-                merged_string+=" \n";
-                merge_counter = 1;
-                display_counter+=1;
+        let response = client.get(&url)?.submit()?;
 
-                if display_counter == 5 {
-                    break;
+        info!("after get");
+
+        let body: Result<Vec<u8>, _> = Bytes::<_, 8>::new(response.reader()).collect();
+
+        let body = body?;
+        let str = String::from_utf8(body)?;
+        //let str = String::from_utf8_lossy(&body)?;
+
+        //let document = Html::parse_document(&body);
+        //let document = Dom::parse(&String::from_utf8_lossy(&body))?;
+
+        let soup = Soup::new(&str);
+        //println!("Soup {:?}", soup);
+        //let times = soup.tag("table").find_all().nth(n);
+
+        // display
+
+        info!("About to initialize the ILI9341 SPI LED driver",);
+
+        //let mut scroller = display.configure_vertical_scroll(20, 5).map_err(|_| anyhow::anyhow!("Display"))?;
+        // display.scroll_vertically(scroller, 5);
+
+        if text_to_dislay.is_empty() {
+            let links = soup.tag("tr").find_all();
+
+            for link in links {
+                let time = link.get("data-datetime");
+                let direction = link.get("data-stationname");
+
+                if direction.is_some() {
+                    let mut time = time.unwrap();
+
+                    //add offset
+                    time.push_str(" +02:00:00");
+                    let format = format_description::parse(
+                        "[day].[month padding:none].[year] [hour padding:zero]:[minute]:[second] [offset_hour \
+                        sign:mandatory]:[offset_minute]:[offset_second]",
+                    )?;
+
+                    unsafe {
+                        let timer: *mut time_t = ptr::null_mut();
+                        text_to_dislay.push(format!(
+                            "{}:\n{}\n",
+                            &direction.unwrap(),
+                            &OffsetDateTime::parse(&time, &format)?.time().to_string()
+                        ));
+                    }
+                } else {
+                    continue;
                 }
             }
         }
-        led_draw(&mut display, &merged_string);
-        display.scroll_vertically(&mut scroller, 5);
-        info!("Dalsie kolo");
+        println!("text_to_display: {:?}", &text_to_dislay);
+        //let s: String = text_to_dislay.to_owned().into_iter().take(6).collect();
+        unsafe {
+            let timer: *mut time_t = ptr::null_mut();
+            //let acutal_time_timestamp = esp_idf_sys::time(timer);
 
+            // let time = OffsetDateTime::from_unix_timestamp(esp_idf_sys::time(timer) as i64)?
+            //     .to_offset(offset!(+2))
+            //     .time();
 
-
-        /************** */
-
-        // for (_, node) in href {
-        //     let text = &node.text();
-        //     println!("txt: {:?}", &text);
-
-        //     if merge_counter != 3 {
-        //         merge_counter+=1;
-        //         merged_string+=text;
-        //     }
-        //     else {
-        //         //merged_string.replace("\n", " ");
-        //         let re = Regex::new(r"\s+").unwrap();
-        //         let t = re.replace_all(&merged_string, " ").to_string();
-        //         println!("Merged string :{:?}", t);
-        //         led_draw(&mut display, &t);
-        //         info!("About to sleep for 3 secs");
-        //         std::thread::sleep(Duration::from_secs(3));
-        //         merged_string.clear();
-        //         merged_string+=text;
-        //         merge_counter = 1;
-        //     }
-        //     display.scroll_vertically(&mut scroller, 5);
-        //     info!("Dalsie kolo");
-
-        // }
-
-
-
+            //format!("Actual time: {}\n", &time.to_string())
+            led_draw(
+                &mut display,
+                &text_to_dislay.to_owned().into_iter().take(6).collect(),
+                &format!(
+                    "Actual time: {}\n",
+                    &OffsetDateTime::from_unix_timestamp(esp_idf_sys::time(timer) as i64)?
+                        .to_offset(offset!(+2))
+                        .time()
+                        .to_string()
+                ),
+            );
+        }
+        text_to_dislay.clear();
+        thread::sleep(Duration::from_secs(10));
     }
-
-        info!("About to sleep");
-        //thread::sleep(Duration::from_millis(1000));
+    info!("About to sleep");
+    //thread::sleep(Duration::from_millis(1000));
 
     drop(wifi);
     info!("Wifi stopped");
@@ -305,7 +295,9 @@ fn wifi(
     let status = wifi.get_status();
 
     if let Status(
-        ClientStatus::Started(ClientConnectionStatus::Connected(ClientIpStatus::Done(_ip_settings))),
+        ClientStatus::Started(ClientConnectionStatus::Connected(ClientIpStatus::Done(
+            _ip_settings,
+        ))),
         ApStatus::Started(ApIpStatus::Done),
     ) = status
     {
@@ -318,7 +310,7 @@ fn wifi(
 }
 
 #[allow(dead_code)]
-fn led_draw<D>(display: &mut D, text: &String) -> Result<(), D::Error>
+fn led_draw<D>(display: &mut D, text: &String, time: &String) -> Result<(), D::Error>
 where
     D: DrawTarget + Dimensions,
     D::Color: From<Rgb565>,
@@ -328,31 +320,47 @@ where
     //display.clear(Rgb565::BLACK.into())?;
     //display.fill_solid(&rect, Rgb565::GREEN.into());
 
-    Rectangle::new(display.bounding_box().top_left, display.bounding_box().size)
-        .into_styled(
-            PrimitiveStyleBuilder::new()
-                .fill_color(Rgb565::BLACK.into())
-                .stroke_color(Rgb565::YELLOW.into())
-                .stroke_width(1)
-                .build(),
-        )
-        .draw(display)?;
+    Rectangle::new(Point::zero(), Size::new(300, 20)).into_styled(
+        TextBoxStyleBuilder::new()
+            .height_mode(HeightMode::FitToText)
+            .alignment(HorizontalAlignment::Justified)
+            .paragraph_spacing(3)
+            .build(),
+    );
+    //.draw(display)?;
+
+    Text::with_alignment(
+        &time,
+        Point::new(0, 15),
+        MonoTextStyle::new(
+            &embedded_graphics::mono_font::iso_8859_2::FONT_10X20,
+            Rgb565::WHITE.into(),
+        ),
+        Alignment::Left,
+    )
+    .draw(display)?;
+
+    Rectangle::new(Point::zero(), Size::new(300, 300)).into_styled(
+        TextBoxStyleBuilder::new()
+            //.height_mode(HeightMode::FitToText)
+            .alignment(HorizontalAlignment::Justified)
+            .paragraph_spacing(3)
+            .build(),
+    );
+    //.draw(display)?;
 
     Text::with_alignment(
         &text,
-        Point::new(3, (display.bounding_box().size.height - 10) as i32 / 2),
-        MonoTextStyle::new(&embedded_graphics::mono_font::iso_8859_2::FONT_10X20, Rgb565::WHITE.into()),
+        Point::new(0, 30),
+        MonoTextStyle::new(
+            &embedded_graphics::mono_font::iso_8859_2::FONT_10X20,
+            Rgb565::WHITE.into(),
+        ),
         Alignment::Left,
-    ).draw(display)?;
+    )
+    .draw(display)?;
 
-    // Text::new(
-    //     text,
-    //     Point::new(10, (display.bounding_box().size.height - 10) as i32 / 2),
-    //     MonoTextStyle::new(&embedded_graphics::mono_font::iso_8859_2::FONT_10X20, Rgb565::WHITE.into()),
-    // )
-    // .draw(display)?;
-
-    info!("LED rendering done");
+    info!("Displaying done");
 
     Ok(())
 }

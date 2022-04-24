@@ -24,25 +24,19 @@ esp-idf-hal = "=0.33.1"
 embedded-svc = "=0.17.2"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
+embedded-text = "0.5.0"
 display-interface = "0.4"
 display-interface-spi = "0.4"
 log = "0.4"
 regex = "1"
-#scraper = "0.12.0"
-#kuchiki = "0.8.1"
-#html5ever = "0.25.1"
-#select = { git = "https://github.com/utkarshkukreti/select.rs", tag = "0.5.0"}
-#selectors = "0.23.0"
-#html_parser = "0.6.2"
 soup = "0.5.1"
 ili9341 = { version = "0.5", git = "https://github.com/yuri91/ili9341-rs" }
+time = { version = "0.3.9", features = ["macros", "parsing"]}
 
 [build-dependencies]
 embuild = "0.28"
 anyhow = "1"
 
-
 [patch.crates-io]
-#libc = { version = "0.2.119", git = "https://github.com/rust-lang/libc"}
-#parking_lot = { package = "parking_lot", version = "0.11", path = "../parking_lot" }
 parking_lot = { package = "parking_lot", version = "0.12", git = "https://github.com/Amanieu/parking_lot"}
+
