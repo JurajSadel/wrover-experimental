@@ -33,7 +33,6 @@ use embedded_text::{
 use ili9341::Scroller;
 
 use regex::Regex;
-use time::format_description::modifier::Hour;
 
 use std::ptr;
 use std::sync::Arc;
@@ -53,8 +52,8 @@ use ili9341::{self, Orientation};
 
 use display_interface_spi::SPIInterfaceNoCS;
 
-const SSID: &str = "test"; //env!("RUST_ESP32_STD_DEMO_WIFI_SSID");
-const PASS: &str = "qwerqwer"; //env!("RUST_ESP32_STD_DEMO_WIFI_PASS");
+const SSID: &str = "test";
+const PASS: &str = "qwerqwer";
 
 fn main() -> anyhow::Result<()> {
     // Temporary. Will disappear once ESP-IDF 4.4 is released, but for now it is necessary to call this function once,
@@ -137,10 +136,10 @@ fn main() -> anyhow::Result<()> {
     )
     .map_err(|_| anyhow::anyhow!("Display"))?;
 
-    led_draw(
+    draw_text(
         &mut display,
         &"".to_string(),
-        &"Initialization in progress...".to_string(),
+        &"Initialization...".to_string(),
     );
 
     let url = String::from(
@@ -154,11 +153,9 @@ fn main() -> anyhow::Result<()> {
 
         let mut client = EspHttpClient::new_default()?;
 
-        info!("after new default");
 
         let response = client.get(&url)?.submit()?;
 
-        info!("after get");
 
         let body: Result<Vec<u8>, _> = Bytes::<_, 8>::new(response.reader()).collect();
 
@@ -193,7 +190,7 @@ fn main() -> anyhow::Result<()> {
                     //add offset
                     time.push_str(" +02:00:00");
                     let format = format_description::parse(
-                        "[day].[month padding:none].[year] [hour padding:zero]:[minute]:[second] [offset_hour \
+                        "[day].[month padding:none].[year] [hour padding:none]:[minute]:[second] [offset_hour \
                         sign:mandatory]:[offset_minute]:[offset_second]",
                     )?;
 
@@ -221,9 +218,9 @@ fn main() -> anyhow::Result<()> {
             //     .time();
 
             //format!("Actual time: {}\n", &time.to_string())
-            led_draw(
+            draw_text(
                 &mut display,
-                &text_to_dislay.to_owned().into_iter().take(6).collect(),
+                &text_to_dislay.to_owned().into_iter().take(7).collect(),
                 &format!(
                     "Actual time: {}\n",
                     &OffsetDateTime::from_unix_timestamp(esp_idf_sys::time(timer) as i64)?
@@ -245,6 +242,13 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+
+/*
+scan all accessible access points
+find "ours" access point with SSID
+configure WiFi with SSID, PASS, channel,...
+get status -> make connection
+*/
 #[allow(dead_code)]
 fn wifi(
     netif_stack: Arc<EspNetifStack>,
@@ -310,14 +314,14 @@ fn wifi(
 }
 
 #[allow(dead_code)]
-fn led_draw<D>(display: &mut D, text: &String, time: &String) -> Result<(), D::Error>
+fn draw_text<D>(display: &mut D, text: &String, time: &String) -> Result<(), D::Error>
 where
     D: DrawTarget + Dimensions,
     D::Color: From<Rgb565>,
 {
     //let rect = Rectangle::new(display.bounding_box().top_left, display.bounding_box().size);
 
-    //display.clear(Rgb565::BLACK.into())?;
+    display.clear(Rgb565::BLACK.into())?;
     //display.fill_solid(&rect, Rgb565::GREEN.into());
 
     Rectangle::new(Point::zero(), Size::new(300, 20)).into_styled(
