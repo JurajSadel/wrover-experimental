@@ -207,7 +207,7 @@ fn main() -> anyhow::Result<()> {
                 }
             }
         }
-        println!("text_to_display: {:?}", &text_to_dislay);
+        //println!("text_to_display: {:?}", &text_to_dislay);
         //let s: String = text_to_dislay.to_owned().into_iter().take(6).collect();
         unsafe {
             let timer: *mut time_t = ptr::null_mut();
