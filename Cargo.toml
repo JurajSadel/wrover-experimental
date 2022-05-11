@@ -18,10 +18,10 @@ native = ["esp-idf-sys/native"]
 
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
-esp-idf-sys = { version = "=0.30.6", features = ["binstart"] }
-esp-idf-svc = { version = "0.37.2", features = ["experimental"] } #0.36.6
-esp-idf-hal = "=0.33.1"
-embedded-svc = "=0.17.2"
+esp-idf-sys = { version = "0.31.5", features = ["binstart"] } #0.30.6
+esp-idf-svc = { version = "0.41", features = ["experimental"] } #0.37.2
+esp-idf-hal = "0.37" #=0.33.1
+embedded-svc = "0.21" #0.17.2
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
 embedded-text = "0.5.0"
@@ -34,7 +34,7 @@ ili9341 = { version = "0.5", git = "https://github.com/yuri91/ili9341-rs" }
 time = { version = "0.3.9", features = ["macros", "parsing"]}
 
 [build-dependencies]
-embuild = "0.28"
+embuild = "0.28" #0.28
 anyhow = "1"
 
 [patch.crates-io]

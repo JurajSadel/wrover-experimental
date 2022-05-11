@@ -56,6 +56,14 @@ const SSID: &str = "test";
 const PASS: &str = "qwerqwer";
 
 fn main() -> anyhow::Result<()> {
+    //let bytes: Box<Vec<u8>> = Box::new(Vec::with_capacity(150_000));
+
+    info!("Main beginning");
+
+    unsafe {
+        println!("Free heap size1 : {:?}", esp_idf_sys::esp_get_free_heap_size());
+        //println!("Max heap block: {:?}", esp_idf_sys::heap_caps_get_largest_free_block());
+    }
     // Temporary. Will disappear once ESP-IDF 4.4 is released, but for now it is necessary to call this function once,
     // or else some patches to the runtime implemented by esp-idf-sys might not link properly.
     esp_idf_sys::link_patches();
@@ -95,13 +103,13 @@ fn main() -> anyhow::Result<()> {
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
     let spi = peripherals.spi2;
-    let backlight = pins.gpio5;
-    let dc = pins.gpio21;
-    let rst = pins.gpio18;
-    let sclk = pins.gpio19;
-    let miso = pins.gpio25;
-    let mosi = pins.gpio23;
-    let cs = pins.gpio22;
+    let backlight = pins.gpio4;
+    let dc = pins.gpio3;
+    let rst = pins.gpio10;
+    let sclk = pins.gpio6;
+    let miso = pins.gpio18;
+    let mosi = pins.gpio7;
+    let cs = pins.gpio2;
 
     // display
     let config = <spi::config::Config as Default>::default().baudrate((26_000_000).into());
@@ -131,7 +139,7 @@ fn main() -> anyhow::Result<()> {
         di,
         reset,
         &mut delay::Ets,
-        Orientation::PortraitFlipped,
+        Orientation::Portrait,//Orientation::PortraitFlipped,
         ili9341::DisplaySize240x320,
     )
     .map_err(|_| anyhow::anyhow!("Display"))?;
@@ -143,30 +151,76 @@ fn main() -> anyhow::Result<()> {
     );
 
     let url = String::from(
-        "https://idos.idnes.cz/en/brno/odjezdy/vysledky/?f=Technologick%C3%BD%20park&fc=302003",
+        "https://idos.idnes.cz/en/brno/odjezdy/vysledky/?f=Technologick%C3%BD%20park&fc=302003", //https://idos.idnes.cz/en/brno/odjezdy/vysledky/?f=Technologick%C3%BD%20park&fc=302003
     );
 
     let mut text_to_dislay: Vec<String> = Vec::new();
 
+    unsafe {
+        println!("Free heap size10 : {:?}", esp_idf_sys::esp_get_free_heap_size());
+        //println!("Max heap block: {:?}", esp_idf_sys::heap_caps_get_largest_free_block());
+    }
+
+    let mut client = EspHttpClient::new_default()?;
+
+    //drop(bytes);
+
+    unsafe {
+        println!("Free heap size11 : {:?}", esp_idf_sys::esp_get_free_heap_size());
+        //println!("Max heap block: {:?}", esp_idf_sys::heap_caps_get_largest_free_block());
+    }
+
     loop {
-        info!("About to fetch content from {}", url);
+        //info!("About to fetch content from {}", url);
 
-        let mut client = EspHttpClient::new_default()?;
+        //let mut client = EspHttpClient::new_default()?;
 
+        //info!("Created Http Client");
+
+        unsafe {
+            println!("Free heap size13 : {:?}", esp_idf_sys::esp_get_free_heap_size());
+            //println!("Max heap block: {:?}", esp_idf_sys::heap_caps_get_largest_free_block());
+        }
 
         let response = client.get(&url)?.submit()?;
 
 
-        let body: Result<Vec<u8>, _> = Bytes::<_, 8>::new(response.reader()).collect();
 
-        let body = body?;
-        let str = String::from_utf8(body)?;
+        unsafe {
+            println!("Free heap size14 : {:?}", esp_idf_sys::esp_get_free_heap_size());
+            //println!("Max heap block: {:?}", esp_idf_sys::heap_caps_get_largest_free_block());
+        }
+
+        //info!("Got response");
+
+
+        // unsafe {
+        //     println!("Free heap size: {:?}", esp_idf_sys::esp_get_free_heap_size());
+        //     //println!("Max heap block: {:?}", esp_idf_sys::heap_caps_get_largest_free_block());
+        // }
+
+
+        //let body: Result<Vec<u8>, _> = Bytes::<_, 8>::new(response.reader()).collect();
+        //let body: Result<Vec<u8>, _> = Bytes::<_, 8>::new(response.reader()).collect();
+        //let bytes: Box<Vec<u8>> = Box::new(Vec::with_capacity(140_000));
+        info!("Got data");
+
+        // let body = body?;
+        // let str = String::from_utf8(body)?;
+
+        info!("Got string");
+
+        unsafe {
+            println!("Free heap size15 : {:?}", esp_idf_sys::esp_get_free_heap_size());
+            //println!("Max heap block: {:?}", esp_idf_sys::heap_caps_get_largest_free_block());
+        }
+
         //let str = String::from_utf8_lossy(&body)?;
 
         //let document = Html::parse_document(&body);
         //let document = Dom::parse(&String::from_utf8_lossy(&body))?;
 
-        let soup = Soup::new(&str);
+        //let soup = Soup::new(&str);
         //println!("Soup {:?}", soup);
         //let times = soup.tag("table").find_all().nth(n);
 
@@ -177,50 +231,58 @@ fn main() -> anyhow::Result<()> {
         //let mut scroller = display.configure_vertical_scroll(20, 5).map_err(|_| anyhow::anyhow!("Display"))?;
         // display.scroll_vertically(scroller, 5);
 
-        if text_to_dislay.is_empty() {
-            let links = soup.tag("tr").find_all();
+        // if text_to_dislay.is_empty() {
+        //     unsafe {
+        //         println!("Free heap size16 : {:?}", esp_idf_sys::esp_get_free_heap_size());
+        //         //println!("Max heap block: {:?}", esp_idf_sys::heap_caps_get_largest_free_block());
+        //     }
+        //     let links = soup.tag("tr").find_all();
 
-            for link in links {
-                let time = link.get("data-datetime");
-                let direction = link.get("data-stationname");
+        //     for link in links {
+        //         let time = link.get("data-datetime");
+        //         let direction = link.get("data-stationname");
 
-                if direction.is_some() {
-                    let mut time = time.unwrap();
+        //         if direction.is_some() {
+        //             let mut time = time.unwrap();
 
-                    //add offset
-                    time.push_str(" +02:00:00");
-                    let format = format_description::parse(
-                        "[day].[month padding:none].[year] [hour padding:none]:[minute]:[second] [offset_hour \
-                        sign:mandatory]:[offset_minute]:[offset_second]",
-                    )?;
+        //             //add offset
+        //             time.push_str(" +02:00:00");
+        //             let format = format_description::parse(
+        //                 "[day].[month padding:none].[year] [hour padding:none]:[minute]:[second] [offset_hour \
+        //                 sign:mandatory]:[offset_minute]:[offset_second]",
+        //             )?;
 
-                    unsafe {
-                        let timer: *mut time_t = ptr::null_mut();
-                        text_to_dislay.push(format!(
-                            "{}:\n{}\n",
-                            &direction.unwrap(),
-                            &OffsetDateTime::parse(&time, &format)?.time().to_string()
-                        ));
-                    }
-                } else {
-                    continue;
-                }
-            }
-        }
+        //             unsafe {
+        //                 let timer: *mut time_t = ptr::null_mut();
+        //                 text_to_dislay.push(format!(
+        //                     "{}:\n{}\n",
+        //                     &direction.unwrap(),
+        //                     &OffsetDateTime::parse(&time, &format)?.time().to_string()
+        //                 ));
+        //             }
+        //             unsafe {
+        //                 println!("Free heap size17 : {:?}", esp_idf_sys::esp_get_free_heap_size());
+        //                 //println!("Max heap block: {:?}", esp_idf_sys::heap_caps_get_largest_free_block());
+        //             }
+        //         } else {
+        //             continue;
+        //         }
+        //     }
+        // }
         //println!("text_to_display: {:?}", &text_to_dislay);
         //let s: String = text_to_dislay.to_owned().into_iter().take(6).collect();
         unsafe {
             let timer: *mut time_t = ptr::null_mut();
             //let acutal_time_timestamp = esp_idf_sys::time(timer);
 
-            // let time = OffsetDateTime::from_unix_timestamp(esp_idf_sys::time(timer) as i64)?
-            //     .to_offset(offset!(+2))
-            //     .time();
+            let time = OffsetDateTime::from_unix_timestamp(esp_idf_sys::time(timer) as i64)?
+                .to_offset(offset!(+2))
+                .time();
 
-            //format!("Actual time: {}\n", &time.to_string())
+            format!("Actual time: {}\n", &time.to_string());
             draw_text(
                 &mut display,
-                &text_to_dislay.to_owned().into_iter().take(7).collect(),
+                &"Hello Rust".to_string(),
                 &format!(
                     "Actual time: {}\n",
                     &OffsetDateTime::from_unix_timestamp(esp_idf_sys::time(timer) as i64)?
@@ -230,7 +292,7 @@ fn main() -> anyhow::Result<()> {
                 ),
             );
         }
-        text_to_dislay.clear();
+        //text_to_dislay.clear();
         thread::sleep(Duration::from_secs(10));
     }
     info!("About to sleep");

@@ -26,9 +26,10 @@ async def hello(websocket, path):
         "type": "start",
         "elf": base64_file('{}/wokwi/dummy.elf'.format(os.getcwd())),
         "espBin": [
-            [0x0000, base64_file('{}/config-files/{}_bootloader.bin'.format(os.getcwd(), os.getenv('ESP_BOARD')))],
-            [0x8000, base64_file('{}/config-files/{}_partition-table.bin'.format(os.getcwd(), os.getenv('ESP_BOARD')))],
-            [0x10000, base64_file('{}/app.bin'.format(os.getenv('CURRENT_PROJECT')))],
+            [0x0, base64_file('merged_32.bin')],
+            #[0x1000, base64_file('{}/config-files/bootloader-esp32.bin'.format(os.getcwd()))],
+            #[0x8000, base64_file('{}/config-files/partition-table-esp32.bin'.format(os.getcwd()))],
+            #[0x10000, base64_file('{}/wr.bin'.format(os.getenv('CURRENT_PROJECT')))],
         ]
     }))
 
@@ -41,6 +42,7 @@ async def hello(websocket, path):
         else:
             print("> {}".format(msg))
 
+#https://wokwi.com/projects/330820329911878226
 start_server = websockets.serve(hello, "127.0.0.1", PORT)
 asyncio.get_event_loop().run_until_complete(start_server)
 board = 325149339656651346
@@ -49,7 +51,7 @@ if os.getenv('ESP_BOARD') == "esp32c3":
 elif os.getenv('ESP_BOARD') == "esp32c3-rust":
     board = 328638850887844436
 elif os.getenv('ESP_BOARD') == "esp32":
-    board = 329992166987268691
+    board = 330820329911878226
 # else :
 #     return 1
 
