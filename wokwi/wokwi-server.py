@@ -27,7 +27,7 @@ async def handle_client(websocket, path):
     # Send the simulation payload
     await websocket.send(json.dumps({
         "type": "start",
-        "elf": base64_file('{}/build/{}.elf'.format(os.getenv('CURRENT_PROJECT'), os.getenv('CURRENT_PROJECT'))),
+        "elf": base64_file('/home/esp/workspace/target/xtensa-esp32-espidf/debug/brno-public-transport'.format(os.getenv('CURRENT_PROJECT'), os.getenv('CURRENT_PROJECT'))),
         "espBin": [
             #[0x1000, base64_file('{}/build/bootloader/bootloader.bin'.format(os.getenv('CURRENT_PROJECT')))],
             #[0x8000, base64_file('{}/build/partition_table/partition-table.bin'.format(os.getenv('CURRENT_PROJECT')))],
