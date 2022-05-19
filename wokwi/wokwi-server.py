@@ -32,7 +32,7 @@ async def handle_client(websocket, path):
             #[0x1000, base64_file('{}/build/bootloader/bootloader.bin'.format(os.getenv('CURRENT_PROJECT')))],
             #[0x8000, base64_file('{}/build/partition_table/partition-table.bin'.format(os.getenv('CURRENT_PROJECT')))],
             #[0x10000, base64_file('{}/build/{}.bin'.format(os.getenv('CURRENT_PROJECT'), os.getenv('CURRENT_PROJECT')))],
-            [0x00000, base64_file('merged_32.bin')],
+            [0x00000, base64_file('app_patched9.bin')],
         ]
     }))
 

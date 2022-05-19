@@ -52,8 +52,10 @@ use ili9341::{self, Orientation};
 
 use display_interface_spi::SPIInterfaceNoCS;
 
-const SSID: &str = "test";
-const PASS: &str = "qwerqwer";
+const SSID: &str = "Wokwi-GUEST";
+const PASS: &str = "";
+
+
 
 fn main() -> anyhow::Result<()> {
     // Temporary. Will disappear once ESP-IDF 4.4 is released, but for now it is necessary to call this function once,
@@ -78,7 +80,7 @@ fn main() -> anyhow::Result<()> {
     let sys_loop_stack = Arc::new(EspSysLoopStack::new()?);
     #[allow(unused)]
     let default_nvs = Arc::new(EspDefaultNvs::new()?);
-    let wifi = wifi(
+    let _wifi = wifi(
         netif_stack.clone(),
         sys_loop_stack.clone(),
         default_nvs.clone(),
@@ -257,55 +259,30 @@ fn wifi(
 ) -> anyhow::Result<Box<EspWifi>> {
     let mut wifi = Box::new(EspWifi::new(netif_stack, sys_loop_stack, default_nvs)?);
 
-    info!("Wifi created, about to scan");
+    wifi.set_configuration(&Configuration::Client(ClientConfiguration {
+        ssid: SSID.into(),
+        password: PASS.into(),
+        auth_method: AuthMethod::None,
+        ..Default::default()
+    }))?;
 
-    let ap_infos = wifi.scan()?;
-
-    let ours = ap_infos.into_iter().find(|a| a.ssid == SSID);
-
-    let channel = if let Some(ours) = ours {
-        info!(
-            "Found configured access point {} on channel {}",
-            SSID, ours.channel
-        );
-        Some(ours.channel)
-    } else {
-        info!(
-            "Configured access point {} not found during scanning, will go with unknown channel",
-            SSID
-        );
-        None
-    };
-
-    wifi.set_configuration(&Configuration::Mixed(
-        ClientConfiguration {
-            ssid: SSID.into(),
-            password: PASS.into(),
-            channel,
-            ..Default::default()
-        },
-        AccessPointConfiguration {
-            ssid: "aptest".into(),
-            channel: channel.unwrap_or(1),
-            ..Default::default()
-        },
-    ))?;
-
-    info!("Wifi configuration set, about to get status");
+    println!("Wifi configuration set, about to get status");
 
     wifi.wait_status_with_timeout(Duration::from_secs(20), |status| !status.is_transitional())
         .map_err(|e| anyhow::anyhow!("Unexpected Wifi status: {:?}", e))?;
 
+    info!("to get status");
     let status = wifi.get_status();
 
+    info!("got status)");
     if let Status(
         ClientStatus::Started(ClientConnectionStatus::Connected(ClientIpStatus::Done(
             _ip_settings,
         ))),
-        ApStatus::Started(ApIpStatus::Done),
+        _,
     ) = status
     {
-        info!("Wifi connected");
+        println!("Wifi connected");
     } else {
         bail!("Unexpected Wifi status: {:?}", status);
     }
