@@ -28,7 +28,7 @@ RUN chmod a+x ${INSTALL_RUST_TOOLCHAIN} \
     && ./${INSTALL_RUST_TOOLCHAIN} \
     --extra-crates "cargo-espflash ldproxy" \
     --clear-cache "YES" --export-file /home/${CONTAINER_USER}/export-rust.sh \
-    --esp-idf-version "master" \
+    --esp-idf-version "release/v4.4" \
     --minified-esp-idf "YES" \
     --build-target "esp32"
 # Install web-flash and wokwi-server
