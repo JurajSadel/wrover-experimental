@@ -27,12 +27,12 @@ async def handle_client(websocket, path):
     # Send the simulation payload
     await websocket.send(json.dumps({
         "type": "start",
-        "elf": base64_file('/home/esp/workspace/target/xtensa-esp32-espidf/debug/brno-public-transport'.format(os.getenv('CURRENT_PROJECT'), os.getenv('CURRENT_PROJECT'))),
+        "elf": base64_file('/home/esp/workspace/target/xtensa-esp32-espidf/release/brno-public-transport'.format(os.getenv('CURRENT_PROJECT'), os.getenv('CURRENT_PROJECT'))),
         "espBin": [
             #[0x1000, base64_file('{}/build/bootloader/bootloader.bin'.format(os.getenv('CURRENT_PROJECT')))],
             #[0x8000, base64_file('{}/build/partition_table/partition-table.bin'.format(os.getenv('CURRENT_PROJECT')))],
             #[0x10000, base64_file('{}/build/{}.bin'.format(os.getenv('CURRENT_PROJECT'), os.getenv('CURRENT_PROJECT')))],
-            [0x00000, base64_file('app_patched9.bin')],
+            [0x00000, base64_file('app_master.bin')],
         ]
     }))
 
@@ -56,7 +56,7 @@ start_server = websockets.serve(handle_client, "127.0.0.1", PORT)
 asyncio.get_event_loop().run_until_complete(start_server)
 
 
-board = 329992166987268691
+board = 332616143815574099
 if(os.getenv('USER') == "gitpod"):
     gp_url = subprocess.getoutput("gp url {}".format(PORT))
     gp_url = gp_url[8:]
