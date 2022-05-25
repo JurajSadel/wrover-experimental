@@ -96,14 +96,22 @@ fn main() -> anyhow::Result<()> {
     // peripherals
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
-    let spi = peripherals.spi2;
+    let spi = peripherals.spi3;
+    // let backlight = pins.gpio5;
+    // let dc = pins.gpio21;
+    // let rst = pins.gpio18;
+    // let sclk = pins.gpio19;
+    // let miso = pins.gpio25;
+    // let mosi = pins.gpio23;
+    // let cs = pins.gpio22;
+
     let backlight = pins.gpio5;
-    let dc = pins.gpio21;
-    let rst = pins.gpio18;
-    let sclk = pins.gpio19;
+    let dc = pins.gpio2;
+    let rst = pins.gpio4;
+    let sclk = pins.gpio18;
     let miso = pins.gpio25;
     let mosi = pins.gpio23;
-    let cs = pins.gpio22;
+    let cs = pins.gpio15;
 
     // display
     let config = <spi::config::Config as Default>::default().baudrate((26_000_000).into());
@@ -113,7 +121,7 @@ fn main() -> anyhow::Result<()> {
 
     //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/spi_master.html
     let di = SPIInterfaceNoCS::new(
-        spi::Master::<spi::SPI2, _, _, _, _>::new(
+        spi::Master::<spi::SPI3, _, _, _, _>::new(
             spi,
             spi::Pins {
                 sclk,
@@ -133,7 +141,7 @@ fn main() -> anyhow::Result<()> {
         di,
         reset,
         &mut delay::Ets,
-        Orientation::PortraitFlipped,
+        Orientation::Portrait,
         ili9341::DisplaySize240x320,
     )
     .map_err(|_| anyhow::anyhow!("Display"))?;
