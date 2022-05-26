@@ -1,0 +1,96 @@
+name: Build wrover-demo ESP32
+
+on:
+  workflow_dispatch:
+    inputs:
+      rust_build_branch:
+        description: 'Branch with rust-build scripts'
+        required: true
+        default: 'main'
+      toolchain_version:
+        description: 'Version of Rust IDF toolchain'
+        required: true
+        default: '1.60.0.0'
+      esp_idf_version:
+        description: 'ESP-IDF version for embuild'
+        required: true
+        default: 'release/v4.4'
+      target:
+        required: true
+        default: 'xtensa-esp32-espidf'
+      board:
+        required: true
+        default: 'esp32'
+
+jobs:
+  get_release:
+    # https://github.com/octokit/request-action
+    name: Get release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.get_upload_url.outputs.url }}
+    steps:
+    - uses: octokit/request-action@v2.x
+      id: get_latest_release
+      with:
+        route: GET /repos/{owner}/{repo}/releases/latest
+        owner: JurajSadel
+        repo: wrover-experimental
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: get upload url
+      id: get_upload_url
+      run: |
+        url=$(echo "$response" | jq -r '.upload_url')
+        echo "::set-output name=url::$url"
+      env:
+        response:  ${{ steps.get_latest_release.outputs.data }}
+  build-wrover-demo-esp32:
+    name: Build Wrover-demo using ${{ matrix.os }}
+    needs: get_release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        include:
+        - os: ubuntu-latest
+          ARCH: ''
+    steps:
+      - name: Check out Rust installation scripts
+        uses: actions/checkout@v2
+        with:
+          repository: esp-rs/rust-build
+          path: rust-build
+          ref: ${{ github.event.inputs.rust_build_branch }}
+      - name: Set up Python
+        if: ${{ matrix.os == 'macos-latest' || matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      - name: Setup Ninja
+        if: ${{ matrix.os == 'macos-latest' || matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' }}
+        uses: seanmiddleditch/gha-setup-ninja@master
+      - name: Installing Rust toolchain
+        run: |
+          ./rust-build/install-rust-toolchain.sh --toolchain-version ${{ github.event.inputs.toolchain_version }} --export-file "export-esp-${{ github.event.inputs.toolchain_version }}.sh" --extra-crates "ldproxy espflash" --toolchain-destination "${HOME}/.rustup/toolchains/esp-${{ github.event.inputs.toolchain_version }}"
+      - name: Check out Wrover-demo-ESP32
+        uses: actions/checkout@v2
+        with:
+          path: Wrover-demo-esp32
+      - name: Build Wrover-demo for ${{ github.event.inputs.target }}
+        working-directory: Wrover-demo-esp32
+        run: |
+          source "../export-esp-${{ github.event.inputs.toolchain_version }}.sh"
+          export ESP_IDF_VERSION=${{ github.event.inputs.esp_idf_version }}
+          cargo +esp-${{ github.event.inputs.toolchain_version }} build --target ${{ github.event.inputs.target }} --release --features "${{ github.event.inputs.board }} native"
+          espflash save-image --merge esp32 wrover-demo-esp32/target/${{ github.event.inputs.target }}/release/wrover-demo-esp32 esp32_merged.bin
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.get_release.outputs.upload_url }}
+          asset_path: wrover-demo-esp32/esp32_merged.bin
+          asset_name: wrover-demo-esp32-merged-${{ github.event.inputs.board }}.bin
+          asset_content_type: 'application/octet-stream'

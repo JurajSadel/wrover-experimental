@@ -96,7 +96,9 @@ fn main() -> anyhow::Result<()> {
     // peripherals
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
-    let spi = peripherals.spi3;
+
+    // GPIOs for real HW wrover-kit
+    // let spi = peripherals.spi2; 
     // let backlight = pins.gpio5;
     // let dc = pins.gpio21;
     // let rst = pins.gpio18;
@@ -105,6 +107,8 @@ fn main() -> anyhow::Result<()> {
     // let mosi = pins.gpio23;
     // let cs = pins.gpio22;
 
+    //GPIOs for Wokwi simulation
+    let spi = peripherals.spi3;
     let backlight = pins.gpio5;
     let dc = pins.gpio2;
     let rst = pins.gpio4;
@@ -120,6 +124,7 @@ fn main() -> anyhow::Result<()> {
     //backlight.set_low()?;
 
     //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/spi_master.html
+    //using real HW wrover-kit, please, use spi::Master::<spi::SPI2, _, _, _, _>::new instead of spi::Master::<spi::SPI3, _, _, _, _>::new
     let di = SPIInterfaceNoCS::new(
         spi::Master::<spi::SPI3, _, _, _, _>::new(
             spi,
