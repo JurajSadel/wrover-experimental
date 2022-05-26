@@ -52,8 +52,10 @@ use ili9341::{self, Orientation};
 
 use display_interface_spi::SPIInterfaceNoCS;
 
-const SSID: &str = "test";
-const PASS: &str = "qwerqwer";
+const SSID: &str = "Wokwi-GUEST";
+const PASS: &str = "";
+
+
 
 fn main() -> anyhow::Result<()> {
     // Temporary. Will disappear once ESP-IDF 4.4 is released, but for now it is necessary to call this function once,
@@ -78,7 +80,7 @@ fn main() -> anyhow::Result<()> {
     let sys_loop_stack = Arc::new(EspSysLoopStack::new()?);
     #[allow(unused)]
     let default_nvs = Arc::new(EspDefaultNvs::new()?);
-    let wifi = wifi(
+    let _wifi = wifi(
         netif_stack.clone(),
         sys_loop_stack.clone(),
         default_nvs.clone(),
@@ -94,14 +96,26 @@ fn main() -> anyhow::Result<()> {
     // peripherals
     let peripherals = Peripherals::take().unwrap();
     let pins = peripherals.pins;
-    let spi = peripherals.spi2;
+
+    // GPIOs for real HW wrover-kit
+    // let spi = peripherals.spi2; 
+    // let backlight = pins.gpio5;
+    // let dc = pins.gpio21;
+    // let rst = pins.gpio18;
+    // let sclk = pins.gpio19;
+    // let miso = pins.gpio25;
+    // let mosi = pins.gpio23;
+    // let cs = pins.gpio22;
+
+    //GPIOs for Wokwi simulation
+    let spi = peripherals.spi3;
     let backlight = pins.gpio5;
-    let dc = pins.gpio21;
-    let rst = pins.gpio18;
-    let sclk = pins.gpio19;
+    let dc = pins.gpio2;
+    let rst = pins.gpio4;
+    let sclk = pins.gpio18;
     let miso = pins.gpio25;
     let mosi = pins.gpio23;
-    let cs = pins.gpio22;
+    let cs = pins.gpio15;
 
     // display
     let config = <spi::config::Config as Default>::default().baudrate((26_000_000).into());
@@ -110,8 +124,9 @@ fn main() -> anyhow::Result<()> {
     //backlight.set_low()?;
 
     //https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/spi_master.html
+    //using real HW wrover-kit, please, use spi::Master::<spi::SPI2, _, _, _, _>::new instead of spi::Master::<spi::SPI3, _, _, _, _>::new
     let di = SPIInterfaceNoCS::new(
-        spi::Master::<spi::SPI2, _, _, _, _>::new(
+        spi::Master::<spi::SPI3, _, _, _, _>::new(
             spi,
             spi::Pins {
                 sclk,
@@ -131,7 +146,7 @@ fn main() -> anyhow::Result<()> {
         di,
         reset,
         &mut delay::Ets,
-        Orientation::PortraitFlipped,
+        Orientation::Portrait,
         ili9341::DisplaySize240x320,
     )
     .map_err(|_| anyhow::anyhow!("Display"))?;
@@ -207,7 +222,7 @@ fn main() -> anyhow::Result<()> {
                 }
             }
         }
-        println!("text_to_display: {:?}", &text_to_dislay);
+        //println!("text_to_display: {:?}", &text_to_dislay);
         //let s: String = text_to_dislay.to_owned().into_iter().take(6).collect();
         unsafe {
             let timer: *mut time_t = ptr::null_mut();
@@ -257,55 +272,30 @@ fn wifi(
 ) -> anyhow::Result<Box<EspWifi>> {
     let mut wifi = Box::new(EspWifi::new(netif_stack, sys_loop_stack, default_nvs)?);
 
-    info!("Wifi created, about to scan");
+    wifi.set_configuration(&Configuration::Client(ClientConfiguration {
+        ssid: SSID.into(),
+        password: PASS.into(),
+        auth_method: AuthMethod::None,
+        ..Default::default()
+    }))?;
 
-    let ap_infos = wifi.scan()?;
-
-    let ours = ap_infos.into_iter().find(|a| a.ssid == SSID);
-
-    let channel = if let Some(ours) = ours {
-        info!(
-            "Found configured access point {} on channel {}",
-            SSID, ours.channel
-        );
-        Some(ours.channel)
-    } else {
-        info!(
-            "Configured access point {} not found during scanning, will go with unknown channel",
-            SSID
-        );
-        None
-    };
-
-    wifi.set_configuration(&Configuration::Mixed(
-        ClientConfiguration {
-            ssid: SSID.into(),
-            password: PASS.into(),
-            channel,
-            ..Default::default()
-        },
-        AccessPointConfiguration {
-            ssid: "aptest".into(),
-            channel: channel.unwrap_or(1),
-            ..Default::default()
-        },
-    ))?;
-
-    info!("Wifi configuration set, about to get status");
+    println!("Wifi configuration set, about to get status");
 
     wifi.wait_status_with_timeout(Duration::from_secs(20), |status| !status.is_transitional())
         .map_err(|e| anyhow::anyhow!("Unexpected Wifi status: {:?}", e))?;
 
+    info!("to get status");
     let status = wifi.get_status();
 
+    info!("got status)");
     if let Status(
         ClientStatus::Started(ClientConnectionStatus::Connected(ClientIpStatus::Done(
             _ip_settings,
         ))),
-        ApStatus::Started(ApIpStatus::Done),
+        _,
     ) = status
     {
-        info!("Wifi connected");
+        println!("Wifi connected");
     } else {
         bail!("Unexpected Wifi status: {:?}", status);
     }
