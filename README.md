@@ -17,7 +17,7 @@ Most important steps:
 # Devcontainers
  The repository supports:
 <!-- GIPOR LINK NEEDS TO BE UPDATED WHEN MERGED -->
--  [Gitpod](https://gitpod.io/): [![Open ESP32 in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/github.com/SergioGasquez/wrover-experimental)
+-  [Gitpod](https://gitpod.io/): [![Open ESP32 in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/github.com/JurajSadel/wrover-experimental)
 -  [Vs Code Devcontainers](https://code.visualstudio.com/docs/remote/containers#_quick-start-open-an-existing-folder-in-a-container)
 -  [GitHub Codespaces](https://docs.github.com/en/codespaces/developing-in-codespaces/creating-a-codespace)
 ## Build

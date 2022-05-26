@@ -73,12 +73,6 @@ jobs:
       - name: Installing Rust toolchain
         run: |
           ./rust-build/install-rust-toolchain.sh --toolchain-version ${{ github.event.inputs.toolchain_version }} --export-file "export-esp-${{ github.event.inputs.toolchain_version }}.sh" --toolchain-destination "${HOME}/.rustup/toolchains/esp-${{ github.event.inputs.toolchain_version }}"
-           wget https://github.com/esp-rs/embuild/releases/download/ldproxy-v0.3.1/ldproxy-x86_64-unknown-linux-gnu.zip
-           unzip ldproxy-x86_64-unknown-linux-gnu.zip
-           chmod +x ldproxy
-           wget https://github.com/esp-rs/espflash/releases/download/v1.5.1/espflash-x86_64-unknown-linux-gnu.zip
-           unzip espflash-x86_64-unknown-linux-gnu.zip
-           chmod +x espflash
       - name: Check out Wrover-demo-ESP32
         uses: actions/checkout@v2
         with:
@@ -89,6 +83,12 @@ jobs:
           source "../export-esp-${{ github.event.inputs.toolchain_version }}.sh"
           export ESP_IDF_VERSION=${{ github.event.inputs.esp_idf_version }}
           cargo +esp-${{ github.event.inputs.toolchain_version }} build --target ${{ github.event.inputs.target }} --release --features native
+          wget https://github.com/esp-rs/embuild/releases/download/ldproxy-v0.3.1/ldproxy-x86_64-unknown-linux-gnu.zip
+          unzip ldproxy-x86_64-unknown-linux-gnu.zip
+          chmod +x ldproxy
+          wget https://github.com/esp-rs/espflash/releases/download/v1.5.1/espflash-x86_64-unknown-linux-gnu.zip
+          unzip espflash-x86_64-unknown-linux-gnu.zip
+          chmod +x espflash
           ./espflash save-image --merge esp32 wrover-demo-esp32/target/${{ github.event.inputs.target }}/release/wrover-demo-esp32 esp32_merged.bin
       - name: Upload Release Asset
         id: upload-release-asset
