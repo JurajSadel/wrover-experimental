@@ -201,8 +201,8 @@ fn main() -> anyhow::Result<()> {
     draw_text_epaper(&mut display, " Hello Rust from ESP32dfg! ", 15, 50);
     epd.update_and_display_frame(&mut spi, display.buffer(), &mut delay).expect("Frame cannot be cleared and updated!");
 
-    
-    /* 
+
+    /*
     unsafe {
         esp_sleep_enable_timer_wakeup(60_000);
         // match t {
@@ -235,12 +235,13 @@ fn main() -> anyhow::Result<()> {
 
         info!("About to fetch content2 from {}", url);
 
-        let body: Result<Vec<u8>, _> = Bytes::<_, 8>::new(response.reader()).collect();
+        //let body: Result<Vec<u8>, _> = Bytes::<_, 64>::new(response.reader()).collect();
 
         info!("About to fetch content3 from {}", url);
 
-        let body = body?;
-        let str = String::from_utf8(body)?;
+        //let body = body?;
+        //let str = String::from_utf8(body)?;
+        let str = String::from_utf8(vec![35])?;
 
         info!("About to fetch content4 from {}", url);
 
