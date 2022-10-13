@@ -14,13 +14,23 @@ opt-level = "z"
 
 [features]
 native = ["esp-idf-sys/native"]
+default = ["esp32_wrover_ili9341"]
+e_paper = ["esp32_epaper"]
 
+# Enable this feature in case you have a ESP32 board and ILI9341 LCD display
+esp32_wrover_ili9341 = []
+
+# Enable this feature in case you have a ESP32 board and ILI9341 LCD display
+esp32_ili9341_wokwi = []
+
+# Enable this feature in case you have a ESP32 board and  Waveshare 2.9inch e-Paper Modul board
+esp32_epaper = []
 
 [dependencies]
 anyhow = {version = "1", features = ["backtrace"]}
 esp-idf-sys = { version = "0.31.5", features = ["binstart"] }
 esp-idf-svc = { version = "0.41", features = ["experimental"] }
-esp-idf-hal = "0.37"
+esp-idf-hal = { version = "0.38" }
 embedded-svc = "0.21"
 embedded-hal = "0.2"
 embedded-graphics = "0.7"
@@ -32,6 +42,7 @@ regex = "1"
 soup = "0.5.1"
 ili9341 = { version = "0.5", git = "https://github.com/yuri91/ili9341-rs" }
 time = { version = "0.3.9", features = ["macros", "parsing"]}
+epd-waveshare = "0.5.0"
 
 [build-dependencies]
 embuild = "0.29" #0.28
@@ -40,3 +51,5 @@ anyhow = "1"
 [patch.crates-io]
 parking_lot = { package = "parking_lot", version = "0.12", git = "https://github.com/Amanieu/parking_lot"}
 
+[package.metadata.espflash]
+partition_table = "partitions.csv"
